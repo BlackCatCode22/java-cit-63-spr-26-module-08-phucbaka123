@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <style>
+        :root {
+            --glass: rgba(255, 255, 255, 0.2);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --text-main: #ffffff;
+            --text-dim: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-main);
+        }
+
+        h1 {
+            margin: 40px 0;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            width: 90%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+        }
+
+        .city-name {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .station-id {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        .temp {
+            font-size: 4.5rem;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+
+        .desc {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            text-transform: capitalize;
+        }
+
+        .details {
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 25px;
+        }
+
+        .detail-item span {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        .detail-item b {
+            font-size: 1.1rem;
+        }
+
+        .loading {
+            font-style: italic;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+<h1>Weather Radar</h1>
+
+<div class="dashboard" id="dashboard">
+    <!-- Card for Fresno -->
+    <div class="card" id="fresno-card">
+        <div class="city-name">Fresno, CA</div>
+        <div class="station-id">Station: KFAT</div>
+        <div class="loading">Fetching current conditions...</div>
+    </div>
+
+    <!-- Card for New York -->
+    <div class="card" id="nyc-card">
+        <div class="city-name">New York, NY</div>
+        <div class="station-id">Station: KNYC</div>
+        <div class="loading">Fetching current conditions...</div>
+    </div>
+</div>
+
+<script>
+    // API Configuration
+    const API_URL = '/weather';
+
+    async function updateWeather() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Backend server is not responding');
+
+            const data = await response.json();
+
+            // Process both cities
+            updateCard('fresno-card', data.fresno_ca);
+            updateCard('nyc-card', data.new_york_ny);
+
+        } catch (error) {
+            console.error('Error fetching weather:', error);
+            document.querySelectorAll('.loading').forEach(el => {
+                el.innerHTML = `<span style="color: #ff6b6b">Offline: ${error.message}</span>`;
+            });
+        }
+    }
+
+    function updateCard(cardId, cityData) {
+        const card = document.getElementById(cardId);
+        const props = cityData.properties;
+
+        // Unit Conversions (NWS sends Celsius and km/h)
+        const tempC = props.temperature.value || 0;
+        const tempF = Math.round((tempC * 9/5) + 32);
+
+        const windSpeedKm = props.windSpeed.value || 0;
+        const windSpeedMph = Math.round(windSpeedKm * 0.621371);
+
+        const humidity = Math.round(props.relativeHumidity.value || 0);
+        const description = props.textDescription || 'N/A';
+
+        // Update HTML content
+        card.innerHTML = `
+                <div class="city-name">${card.querySelector('.city-name').innerText}</div>
+                <div class="station-id">${card.querySelector('.station-id').innerText}</div>
+                <div class="temp">${tempF}°</div>
+                <div class="desc">${description}</div>
+                <div class="details">
+                    <div class="detail-item">
+                        <span>Humidity</span>
+                        <b>${humidity}%</b>
+                    </div>
+                    <div class="detail-item">
+                        <span>Wind</span>
+                        <b>${windSpeedMph} <small>mph</small></b>
+                    </div>
+                </div>
+            `;
+    }
+
+    // Run on load
+    updateWeather();
+    // Refresh every 5 minutes
+    setInterval(updateWeather, 300000);
+</script>
+</body>
+</html>
